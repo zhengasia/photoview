@@ -5,7 +5,6 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.app.Activity
 import android.content.Context
-import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -23,8 +22,8 @@ class PhotoView : View {
 
     private var beginX: Float = 0.0f
     private var beginY: Float = 0.0f
-
-    private var bDouble: Boolean = false
+    //屏幕上是否是双指操作中
+    private var bDoubleFinger: Boolean = false
 
     //动画执行时间
     private val DURATION_ANIMATION: Long = 300
@@ -169,6 +168,9 @@ class PhotoView : View {
             distanceX: Float,
             distanceY: Float
         ): Boolean {
+            if(bDoubleFinger){//双指在屏幕上的时候禁止滑动，规避scaleEnd触发
+                return super.onScroll(e1, e2, distanceX, distanceY)
+            }
             //大图情况下，可以滑动
             if (bLarge) {
                 mCurrentOffsetX -= distanceX
@@ -331,16 +333,15 @@ class PhotoView : View {
                     parent.requestDisallowInterceptTouchEvent(true)
                 }
             }
-            in 250..500 -> {
-                if (!bSmallScroll) {
+            in 250..500 -> {//todo ？ 有点问题，怎么判断是两个手指在一起？
 
-                    bDouble = true;
+                if (!bSmallScroll) {
+                    bDoubleFinger = true;
                     parent.requestDisallowInterceptTouchEvent(true)
                 }
-
             }
             MotionEvent.ACTION_MOVE -> {
-                if (!bDouble && !bSmallScroll) {
+                if (!bDoubleFinger && !bSmallScroll) {
                     if (bLarge) {//todo 大图情况下一般不需要拦截
                         var detalX = event.rawX - beginX
                         var detalY = event.rawY - beginY
@@ -382,8 +383,7 @@ class PhotoView : View {
 
             MotionEvent.ACTION_UP -> {
                 if (!bSmallScroll) {
-
-                    bDouble = false
+                    bDoubleFinger = false
                     parent.requestDisallowInterceptTouchEvent(false)
                 }
             }
