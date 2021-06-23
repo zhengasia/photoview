@@ -5,6 +5,7 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.app.Activity
 import android.content.Context
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -32,21 +33,24 @@ class PhotoView : View {
     private var bFinishScale: Float = 0.0f
 
     private var mInitScale: Float = 0.0f
+
+    //初始图片偏移量，为了退出时返回原来的位置
     private var mInitOffsetX: Float = 0.0f
     private var mInitOffsetY: Float = 0.0f
 
     private var bFinishAnimation: Boolean = false
+
+    //第一次进来是否需要偏移动画
     private var bInitAnimation: Boolean = false
     private var initOffsetX: Int = 0
     private var initoffsetY: Int = 0
     private var initwidth: Int = 0
     private var initheight: Int = 0
 
-    private var currentMaxScale: Float = 0.0f
 
-    //X,Y 偏移量
-    private var mOffsetX: Float = 0.0f
-    private var mOffsetY: Float = 0.0f
+    //X,Y 当前偏移量
+    private var mCurrentOffsetX: Float = 0.0f
+    private var mCurrentOffsetY: Float = 0.0f
 
     //手势
     private lateinit var gesture: GestureDetector
@@ -57,20 +61,19 @@ class PhotoView : View {
     private lateinit var bitmap: Bitmap
     private lateinit var paint: Paint
 
-    //最小，最大，当前的缩放量
+    //最小，最大，当前的缩放量和当前最大的偏移量
     //最大的缩放量是最小的2倍
     private var smallScale = 0.0f
     private var bigScale = 0.0f
     private var currentScale = 0.0f
+    private var currentMaxScale = 0.0f
 
     //是否是大图
     private var bLarge: Boolean = false
 
-    //最大最小的移动量
-    private var leftTranslateX = 0.0f
-    private var topTranslateY = 0.0f
-    private var rightTranslateX = 0.0f
-    private var bottomTranslateY = 0.0f
+    //图片放大后，可以拖动的最大最小的距离
+    private var maxOffsetX = 0.0f
+    private var maxOffsetY = 0.0f
 
     //添加手指离开后滚动
     private lateinit var overScroller: OverScroller
@@ -102,7 +105,7 @@ class PhotoView : View {
      */
     inner class SimpleGestureListener : GestureDetector.SimpleOnGestureListener() {
         override fun onDown(e: MotionEvent?): Boolean {
-            return true
+            return true //todo 返回true，不然手势无法执行
         }
 
         // 单击（退出APP）
@@ -112,46 +115,29 @@ class PhotoView : View {
         }
 
         override fun onDoubleTap(e: MotionEvent?): Boolean {
-            if (bLarge) {
-                //双击缩小
+            if (bLarge) { //todo 双击缩小
                 bLarge = false
                 getAnimator(currentScale, smallScale, object : PhotoAnimatorListener() {
                     override fun onAnimationEnd(animation: Animator?) {
                         super.onAnimationEnd(animation)
-                        mOffsetX = 0.0f
-                        mOffsetY = 0.0f
+                        //动画结束后设偏移量为0
+                        mCurrentOffsetX = 0.0f
+                        mCurrentOffsetY = 0.0f
                     }
                 }).start()
-            } else {
+            } else {//todo 双击放大
                 setMaxTranslateOffset(bigScale)
-                mOffsetX = (e!!.x - width / 2) * (1 - bigScale / smallScale)
-                mOffsetY = (e.y - height / 2) * (1 - bigScale / smallScale)
-                if (leftTranslateX <= 0) {
-                    mOffsetX = 0.0f
-                } else {
-                    if (mOffsetX > leftTranslateX) {
-                        mOffsetX = leftTranslateX
-                    } else if (mOffsetX < rightTranslateX) {
-                        mOffsetX = rightTranslateX
-                    }
-                }
-                if (topTranslateY <= 0) {
-                    mOffsetY = 0.0f
-
-                } else {
-                    if (mOffsetY > topTranslateY) {
-                        mOffsetY = topTranslateY
-                    } else if (mOffsetY < bottomTranslateY) {
-                        mOffsetY = bottomTranslateY
-                    }
-                }
-
+                //点击哪里，哪里放大，需要获取偏移量
+                mCurrentOffsetX = (e!!.x - width / 2) * (1 - bigScale / smallScale)
+                mCurrentOffsetY = (e!!.y - height / 2) * (1 - bigScale / smallScale)
+                //矫正偏移量，不能超过可以拖动的边界
+                correctOffset()
                 getAnimator(smallScale, bigScale).start()
                 bLarge = true
             }
             return super.onDoubleTap(e)
         }
-
+        //todo 惯性滑动
         override fun onFling(
             e1: MotionEvent?,
             e2: MotionEvent?,
@@ -160,14 +146,14 @@ class PhotoView : View {
         ): Boolean {
             if (bLarge) {
                 overScroller.fling(
-                    mOffsetX.toInt(),
-                    mOffsetY.toInt(),
+                    mCurrentOffsetX.toInt(),
+                    mCurrentOffsetY.toInt(),
                     velocityX.toInt(),
                     velocityY.toInt(),
-                    leftTranslateX.coerceAtMost(rightTranslateX).toInt(),
-                    rightTranslateX.coerceAtLeast(leftTranslateX).toInt(),
-                    topTranslateY.coerceAtMost(bottomTranslateY).toInt(),
-                    topTranslateY.coerceAtLeast(bottomTranslateY).toInt()
+                    (-maxOffsetX).toInt(),
+                    maxOffsetX.toInt(),
+                    (-maxOffsetY).toInt(),
+                    maxOffsetY.toInt()
                 )
                 postOnAnimation(FlingRunnable())
             }
@@ -185,42 +171,53 @@ class PhotoView : View {
         ): Boolean {
             //大图情况下，可以滑动
             if (bLarge) {
-                if (leftTranslateX <= 0) {
-                    mOffsetX = 0.0f
-                } else {
-                    mOffsetX -= distanceX
-                    if (mOffsetX > leftTranslateX) {
-                        mOffsetX = leftTranslateX
-                    } else if (mOffsetX < rightTranslateX) {
-                        mOffsetX = rightTranslateX
-                    }
-                }
-                if (topTranslateY <= 0) {
-                    mOffsetY = 0.0f
-                } else {
-                    mOffsetY -= distanceY
-                    if (mOffsetY > topTranslateY) {
-                        mOffsetY = topTranslateY
-                    } else if (mOffsetY < bottomTranslateY) {
-                        mOffsetY = bottomTranslateY
-                    }
-                }
+                mCurrentOffsetX -= distanceX
+                mCurrentOffsetY -= distanceY
+                correctOffset()
                 invalidate()
             } else {//原图情况下
                 if (bSmallScroll) {  //如果正在滚动，请继续滚动
-                    mOffsetX -= distanceX
-                    mOffsetY -= distanceY
+                    mCurrentOffsetX -= distanceX
+                    mCurrentOffsetY -= distanceY
                     invalidate()
                 } else {  //如果没有滚动的话，当Y方向滑动（必须向下）的距离大于X方向，可以滑动（退出使用）
                     if (-distanceY > abs(distanceX)) {
                         bSmallScroll = true
-                        mOffsetX -= distanceX
-                        mOffsetY -= distanceY
+                        mCurrentOffsetX -= distanceX
+                        mCurrentOffsetY -= distanceY
                         invalidate()
                     }
                 }
             }
             return super.onScroll(e1, e2, distanceX, distanceY)
+        }
+    }
+
+    /**
+     * 矫正偏移量，不能超过可以拖动的最大边界
+     */
+    private fun correctOffset() {
+        when {
+            maxOffsetX==0.0f -> {
+                mCurrentOffsetX = 0.0f;
+            }
+            mCurrentOffsetX>maxOffsetX -> {
+                mCurrentOffsetX = maxOffsetX
+            }
+            mCurrentOffsetX<-maxOffsetX -> {
+                mCurrentOffsetX = -maxOffsetX
+            }
+        }
+        when {
+            maxOffsetY==0.0f -> {
+                mCurrentOffsetY = 0.0f;
+            }
+            mCurrentOffsetY>maxOffsetY -> {
+                mCurrentOffsetY = maxOffsetY
+            }
+            mCurrentOffsetY<-maxOffsetY -> {
+                mCurrentOffsetY = -maxOffsetY
+            }
         }
     }
 
@@ -241,8 +238,8 @@ class PhotoView : View {
 
         override fun onScaleBegin(detector: ScaleGestureDetector?): Boolean {
             if (currentScale == smallScale) {
-                mOffsetX = 0.0f
-                mOffsetY = 0.0f
+                mCurrentOffsetX = 0.0f
+                mCurrentOffsetY = 0.0f
             }
             initScale = currentScale
             return true
@@ -259,8 +256,8 @@ class PhotoView : View {
                 getAnimator(currentScale, smallScale, object : PhotoAnimatorListener() {
                     override fun onAnimationEnd(animation: Animator?) {
                         super.onAnimationEnd(animation)
-                        mOffsetX = 0.0f
-                        mOffsetY = 0.0f
+                        mCurrentOffsetX = 0.0f
+                        mCurrentOffsetY = 0.0f
                     }
                 }).start()
             }
@@ -268,31 +265,15 @@ class PhotoView : View {
 
     }
 
+    /**
+     * 惯性滑动
+     */
     private inner class FlingRunnable : Runnable {
         override fun run() {
             if (overScroller.computeScrollOffset()) {
-                mOffsetX = overScroller.currX.toFloat()
-                mOffsetY = overScroller.currY.toFloat()
-
-                if (leftTranslateX <= 0) {
-                    mOffsetX = 0.0f
-                } else {
-                    if (mOffsetX > leftTranslateX) {
-                        mOffsetX = leftTranslateX
-                    } else if (mOffsetX < rightTranslateX) {
-                        mOffsetX = rightTranslateX
-                    }
-                }
-                if (topTranslateY <= 0) {
-                    mOffsetY = 0.0f
-                } else {
-                    if (mOffsetY > topTranslateY) {
-                        mOffsetY = topTranslateY
-                    } else if (mOffsetY < bottomTranslateY) {
-                        mOffsetY = bottomTranslateY
-                    }
-                }
-
+                mCurrentOffsetX = overScroller.currX.toFloat()
+                mCurrentOffsetY = overScroller.currY.toFloat()
+                correctOffset()
                 invalidate()
                 postOnAnimation(this)
             }
@@ -306,6 +287,9 @@ class PhotoView : View {
         overScroller = OverScroller(context)
     }
 
+    /**
+     * 放大缩小动画
+     */
     fun getAnimator(
         smallScale: Float,
         bigScale: Float,
@@ -325,19 +309,19 @@ class PhotoView : View {
     }
 
     fun setTranslateX(tranX: Float) {
-        mOffsetX = tranX
+        mCurrentOffsetX = tranX
         invalidate()
     }
 
     fun setTranslateY(tranX: Float) {
-        mOffsetY = tranX
+        mCurrentOffsetY = tranX
         invalidate()
     }
 
+    /**
+     * 解决ViewPager  图片左右拖动  事件冲突
+     */
     override fun dispatchTouchEvent(event: MotionEvent?): Boolean {
-        Log.e("TTTAAA", "photoView dispatchTouchEvent  event.action = ${event!!.action}")
-
-
         when (event!!.action) {
             MotionEvent.ACTION_DOWN -> {
                 if (!bSmallScroll) {
@@ -357,23 +341,25 @@ class PhotoView : View {
             }
             MotionEvent.ACTION_MOVE -> {
                 if (!bDouble && !bSmallScroll) {
-                    if (bLarge) {//大图情况下一般不需要拦截
+                    if (bLarge) {//todo 大图情况下一般不需要拦截
                         var detalX = event.rawX - beginX
                         var detalY = event.rawY - beginY
-                        if (abs(detalY) < abs(detalX)) {
-                            //左右滑动
-                            parent.requestDisallowInterceptTouchEvent(true)
-                            if (detalX > 0.0f) {//往右边滑动
-                                if (mOffsetX == leftTranslateX) {
-                                    parent.requestDisallowInterceptTouchEvent(false)
-                                } else {
-                                    parent.requestDisallowInterceptTouchEvent(true)
-                                }
-                            } else {//往左边滑动
-                                if (mOffsetX == rightTranslateX) {
-                                    parent.requestDisallowInterceptTouchEvent(false)
-                                } else {
-                                    parent.requestDisallowInterceptTouchEvent(true)
+                        if (abs(detalY) < abs(detalX)) {//todo 左右滑动
+                            if(maxOffsetX == 0.0f){//如果是不能左右拖动，交给viewpager拖动
+                                parent.requestDisallowInterceptTouchEvent(false)
+                            }else{
+                                if (detalX > 0.0f) {//往右边滑动
+                                    if (mCurrentOffsetX == maxOffsetX) {
+                                        parent.requestDisallowInterceptTouchEvent(false)
+                                    } else {
+                                        parent.requestDisallowInterceptTouchEvent(true)
+                                    }
+                                } else {//往左边滑动
+                                    if (mCurrentOffsetX == -maxOffsetX) {
+                                        parent.requestDisallowInterceptTouchEvent(false)
+                                    } else {
+                                        parent.requestDisallowInterceptTouchEvent(true)
+                                    }
                                 }
                             }
                         } else {
@@ -407,16 +393,14 @@ class PhotoView : View {
     }
 
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-
-        if (bSmallScroll && event!!.action == MotionEvent.ACTION_UP) {
-            if (mOffsetY > DURATION_ANIMATION) {
+        if (bSmallScroll && event!!.action == MotionEvent.ACTION_UP) {//todo 小图拖动情况下，手指抬起
+            if (mCurrentOffsetY > DURATION_ANIMATION) {//超过拖动距离，退出页面
                 recycler()
-            } else {
-                Log.e("TAG", "抬起")
+            } else {//回归原位置
                 var animator1: ObjectAnimator =
-                    ObjectAnimator.ofFloat(this, "translateX", mOffsetX, 0f)
+                    ObjectAnimator.ofFloat(this, "translateX", mCurrentOffsetX, 0f)
                 var animator2: ObjectAnimator =
-                    ObjectAnimator.ofFloat(this, "translateY", mOffsetY, 0f)
+                    ObjectAnimator.ofFloat(this, "translateY", mCurrentOffsetY, 0f)
                 val animatorSet = AnimatorSet()
                 animatorSet.playTogether(animator1, animator2)
                 animatorSet.duration = DURATION_ANIMATION
@@ -432,11 +416,12 @@ class PhotoView : View {
         if (!scaleGesture.isInProgress) {
             result = gesture.onTouchEvent(event)
         }
-        Log.e("TTTAAA", "photoView onTouchEvent result = $result")
-
         return result
     }
 
+    /**
+     * 填充bitmap加画布拖动，放大缩小
+     */
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         canvas?.run {
@@ -446,32 +431,47 @@ class PhotoView : View {
                     canvasSmallScroll(this)
                 }
                 bInitAnimation -> {
-                    setBackgroundColor(Color.parseColor("#000000"))
-                    var offsetFactor: Float = 1 - currentScale / smallScale
-                    translate(mOffsetX * offsetFactor, mOffsetY * offsetFactor)
-                    scale(currentScale, currentScale, width.toFloat() / 2, height.toFloat() / 2)
-                    drawBitmap(bitmap, originX, originY, paint)
+                    //第一次进来时候绘制
+                    canvasInitComing(this)
                 }
                 bFinishAnimation -> {
-                    setBackgroundColor(Color.parseColor("#000000"))
-                    var offsetFactor: Float =
-                        1 - (bFinishScale - currentScale) / (bFinishScale - mInitScale)
-                    translate(
-                        mInitOffsetX + (mOffsetX - mInitOffsetX) * offsetFactor,
-                        mInitOffsetY + (mOffsetY - mInitOffsetY) * offsetFactor
-                    )
-                    background.alpha = (bFinishValue * offsetFactor).toInt()
-
-                    scale(currentScale, currentScale, width.toFloat() / 2, height.toFloat() / 2)
-                    drawBitmap(bitmap, originX, originY, paint)
+                    //页面退出时绘制，需要返回初始点
+                    canvasFinish(this)
                 }
                 else -> {
+                    //正常绘制
                     canvasNormal(this)
-
-
                 }
             }
         }
+    }
+
+    /**
+     * 页面退出时绘制，需要返回初始点
+     */
+    private fun canvasFinish(canvas: Canvas) {
+        setBackgroundColor(Color.parseColor("#000000"))
+        var offsetFactor: Float =
+            1 - (bFinishScale - currentScale) / (bFinishScale - mInitScale)
+        canvas.translate(
+            mInitOffsetX + (mCurrentOffsetX - mInitOffsetX) * offsetFactor,
+            mInitOffsetY + (mCurrentOffsetY - mInitOffsetY) * offsetFactor
+        )
+        background.alpha = (bFinishValue * offsetFactor).toInt()
+        canvas.scale(currentScale, currentScale, width.toFloat() / 2, height.toFloat() / 2)
+        canvas.drawBitmap(bitmap, originX, originY, paint)
+    }
+
+    /**
+     * 第一次进来时候绘制
+     */
+
+    private fun canvasInitComing(canvas: Canvas) {
+        setBackgroundColor(Color.parseColor("#000000"))
+        var offsetFactor: Float = 1 - currentScale / smallScale
+        canvas.translate(mCurrentOffsetX * offsetFactor, mCurrentOffsetY * offsetFactor)
+        canvas.scale(currentScale, currentScale, width.toFloat() / 2, height.toFloat() / 2)
+        canvas.drawBitmap(bitmap, originX, originY, paint)
     }
 
     /**
@@ -479,9 +479,10 @@ class PhotoView : View {
      */
     private fun canvasNormal(canvas: Canvas) {
         setBackgroundColor(Color.parseColor("#000000"))
-        var offsetFactor: Float =
-            (currentScale - smallScale) / (currentMaxScale - smallScale)
-        canvas.translate(mOffsetX * offsetFactor, mOffsetY * offsetFactor)
+        //偏移因子，大小从0到1或者从1到0，
+        var offsetFactor: Float =  (currentScale - smallScale) / (currentMaxScale - smallScale)
+        canvas.translate(mCurrentOffsetX * offsetFactor, mCurrentOffsetY * offsetFactor)
+
         canvas.scale(currentScale, currentScale, width.toFloat() / 2, height.toFloat() / 2)
         canvas.drawBitmap(bitmap, originX, originY, paint)
     }
@@ -490,20 +491,20 @@ class PhotoView : View {
      *  小图的时候，可以拖动图片，然后退出Activity或者复原
      */
     private fun canvasSmallScroll(canvas: Canvas) {
-        canvas.translate(mOffsetX, mOffsetY)
+        canvas.translate(mCurrentOffsetX, mCurrentOffsetY)
         var scale: Float = currentScale
         setBackgroundColor(Color.parseColor("#000000"))
-        scale = if (mOffsetY < 0) {
+        scale = if (mCurrentOffsetY < 0) {
             background.alpha = 255
             currentScale
         } else {
             var value =
-                (255 * (1 - mOffsetY * 2 / (height + bitmap.height * currentScale))).toInt()
+                (255 * (1 - mCurrentOffsetY * 2 / (height + bitmap.height * currentScale))).toInt()
             if (value < 0) {
                 value = 0
             }
             background.alpha = value
-            currentScale * (1 - mOffsetY * 3 / (height * 2 + bitmap.height * currentScale * 2))
+            currentScale * (1 - mCurrentOffsetY * 3 / (height * 2 + bitmap.height * currentScale * 2))
         }
         canvas.scale(scale, scale, width.toFloat() / 2, height.toFloat() / 2)
         canvas.drawBitmap(bitmap, originX, originY, paint)
@@ -525,25 +526,24 @@ class PhotoView : View {
         bigScale = 2 * smallScale
 
 
-        if (bInitAnimation) {
-            mInitOffsetX =
-                (-width / 2 + initwidth / 2 + initOffsetX).toFloat() / (1 - currentScale / smallScale)
+
+        if (bInitAnimation) {//todo 需要首次进来动画
+            mInitOffsetX  =
+                (-width / 2 + initwidth / 2 + initOffsetX).toFloat()
             mInitOffsetY =
-                (-height / 2 + initheight / 2 + initoffsetY - 90).toFloat() / (1 - currentScale / smallScale)
+                (-height / 2 + initheight / 2 + initoffsetY - getStatusBarHeight()).toFloat()
             mInitScale = initwidth / bitmap.width.toFloat()
-
             currentScale = mInitScale
-
-            mOffsetX = mInitOffsetX
-            mOffsetY = mInitOffsetY
+            mCurrentOffsetX = mInitOffsetX
+            mCurrentOffsetY = mInitOffsetY
             getAnimator(
                 initwidth / bitmap.width.toFloat(),
                 smallScale,
                 object : PhotoAnimatorListener() {
                     override fun onAnimationEnd(animation: Animator?) {
                         super.onAnimationEnd(animation)
-                        mOffsetY = 0.0f
-                        mOffsetX = 0.0f
+                        mCurrentOffsetY = 0.0f
+                        mCurrentOffsetX = 0.0f
                         bInitAnimation = false
                     }
                 }).start()
@@ -553,14 +553,13 @@ class PhotoView : View {
 
     }
 
-    //初始化进来
+    //初始化进来，需要位置移动
     fun initData(offsetX: Int, offsetY: Int, width: Int, height: Int, bmp: Bitmap) {
         this.initOffsetX = offsetX
         this.initoffsetY = offsetY
         this.initwidth = width
         this.initheight = height
         this.bitmap = bmp
-
         bInitAnimation = true
         Log.e("TAG", "offsetX=$offsetX  offsetY=$offsetY width=$width height=$height   ")
     }
@@ -572,14 +571,22 @@ class PhotoView : View {
     }
 
     /**
-     * todo 设置最大偏移量
+     * todo 设置最大偏移量,即：拖动的时候可以拖多少，拖到边界不能再拖动了
      */
     private fun setMaxTranslateOffset(maxScale: Float) {
         currentMaxScale = maxScale
-        leftTranslateX = (bitmap.width * maxScale - width) / 2
-        rightTranslateX = (width - bitmap.width * maxScale) / 2
-        topTranslateY = (bitmap.height * maxScale - height) / 2
-        bottomTranslateY = (height - bitmap.height * maxScale) / 2
+
+        maxOffsetX = if(bitmap.width*maxScale-width<=0){
+            0.0f
+        }else{
+            (bitmap.width * maxScale - width) / 2
+        }
+
+        maxOffsetY = if(bitmap.height*maxScale-height<=0){
+            0.0f
+        }else{
+            (bitmap.height * maxScale - height) / 2
+        }
     }
 
     /**
@@ -604,7 +611,9 @@ class PhotoView : View {
         ).start()
     }
 
-
+    /**
+     * 动画结束监听
+     */
     abstract inner class PhotoAnimatorListener : Animator.AnimatorListener {
         override fun onAnimationStart(animation: Animator?) {
         }
@@ -618,5 +627,13 @@ class PhotoView : View {
         override fun onAnimationRepeat(animation: Animator?) {
         }
 
+    }
+
+    /**
+     * 获取状态栏高度
+     */
+    private fun getStatusBarHeight(): Int {
+        val resourceId: Int = resources.getIdentifier("status_bar_height", "dimen", "android")
+        return resources.getDimensionPixelSize(resourceId)
     }
 }
