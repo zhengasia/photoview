@@ -1,0 +1,4 @@
+include ':common'
+include ':photoview'
+include ':app'
+rootProject.name = "MyViewApplication"
