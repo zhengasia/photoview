@@ -1,4 +1,4 @@
-package com.xxkt.photoview.view
+package com.zasia.photoview.view
 
 import android.animation.Animator
 import android.animation.AnimatorSet
@@ -16,12 +16,19 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import android.widget.OverScroller
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.xxkt.common.utils.ImageUtil
+import com.zasia.photoview.inter.PhotoListener
+import java.io.File
 import kotlin.math.abs
 
 class PhotoView : View {
 
+    private lateinit var mContext: Context
     private var beginX: Float = 0.0f
     private var beginY: Float = 0.0f
+
     //屏幕上是否是双指操作中
     private var bDoubleFinger: Boolean = false
 
@@ -100,14 +107,38 @@ class PhotoView : View {
     }
 
     /**
-     * 手势
+     * TODO 手势操作
      */
     inner class SimpleGestureListener : GestureDetector.SimpleOnGestureListener() {
+        /** 返回true，不然手势无法执行*/
         override fun onDown(e: MotionEvent?): Boolean {
-            return true //todo 返回true，不然手势无法执行
+            return true
         }
 
-        // 单击（退出APP）
+        /** 长安调出功能菜单（保存图片，分享图片）*/
+        override fun onLongPress(e: MotionEvent?) {
+            super.onLongPress(e)
+
+            PhotoDialogFragment().addOnListener(object:PhotoListener{
+                override fun savePic() {
+                    if(mContext!=null&&!(mContext as AppCompatActivity).isDestroyed
+                        &&!(mContext as AppCompatActivity).isFinishing){
+                        ImageUtil.savePic(mContext,bitmap)
+                        Toast.makeText(mContext,"保存图片成功",Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                override fun sharePic() {
+                    if(mContext!=null&&!(mContext as AppCompatActivity).isDestroyed
+                        &&!(mContext as AppCompatActivity).isFinishing){
+                        var absoultFilePath = ImageUtil.savePic(mContext,bitmap)
+                        ImageUtil.shareFile(mContext, File(absoultFilePath))
+                    }
+                }
+
+            }).show((mContext as AppCompatActivity).supportFragmentManager,"PhotoDialogFragment")
+        }
+        /** 单击（退出APP）*/
         override fun onSingleTapConfirmed(e: MotionEvent?): Boolean {
             recycler()
             return super.onSingleTapConfirmed(e)
@@ -136,6 +167,7 @@ class PhotoView : View {
             }
             return super.onDoubleTap(e)
         }
+
         //todo 惯性滑动
         override fun onFling(
             e1: MotionEvent?,
@@ -168,7 +200,7 @@ class PhotoView : View {
             distanceX: Float,
             distanceY: Float
         ): Boolean {
-            if(bDoubleFinger){//双指在屏幕上的时候禁止滑动，规避scaleEnd触发
+            if (bDoubleFinger) {//双指在屏幕上的时候禁止滑动，规避scaleEnd触发
                 return super.onScroll(e1, e2, distanceX, distanceY)
             }
             //大图情况下，可以滑动
@@ -200,24 +232,24 @@ class PhotoView : View {
      */
     private fun correctOffset() {
         when {
-            maxOffsetX==0.0f -> {
+            maxOffsetX == 0.0f -> {
                 mCurrentOffsetX = 0.0f;
             }
-            mCurrentOffsetX>maxOffsetX -> {
+            mCurrentOffsetX > maxOffsetX -> {
                 mCurrentOffsetX = maxOffsetX
             }
-            mCurrentOffsetX<-maxOffsetX -> {
+            mCurrentOffsetX < -maxOffsetX -> {
                 mCurrentOffsetX = -maxOffsetX
             }
         }
         when {
-            maxOffsetY==0.0f -> {
+            maxOffsetY == 0.0f -> {
                 mCurrentOffsetY = 0.0f;
             }
-            mCurrentOffsetY>maxOffsetY -> {
+            mCurrentOffsetY > maxOffsetY -> {
                 mCurrentOffsetY = maxOffsetY
             }
-            mCurrentOffsetY<-maxOffsetY -> {
+            mCurrentOffsetY < -maxOffsetY -> {
                 mCurrentOffsetY = -maxOffsetY
             }
         }
@@ -237,6 +269,7 @@ class PhotoView : View {
             invalidate()
             return false
         }
+
 
         override fun onScaleBegin(detector: ScaleGestureDetector?): Boolean {
             if (currentScale == smallScale) {
@@ -283,6 +316,7 @@ class PhotoView : View {
     }
 
     private fun init(context: Context) {
+        this.mContext = context;
         paint = Paint(Paint.ANTI_ALIAS_FLAG)
         gesture = GestureDetector(context, SimpleGestureListener())
         scaleGesture = ScaleGestureDetector(context, ScaleGestureListener())
@@ -324,7 +358,10 @@ class PhotoView : View {
      * 解决ViewPager  图片左右拖动  事件冲突
      */
     override fun dispatchTouchEvent(event: MotionEvent?): Boolean {
-        when (event!!.action) {
+
+        Log.e("eventTap", "eventActionMask = ${event!!.actionMasked}")
+
+        when (event!!.actionMasked) {//如果需要双指判断，使用actionMasked
             MotionEvent.ACTION_DOWN -> {
                 if (!bSmallScroll) {
 
@@ -333,12 +370,14 @@ class PhotoView : View {
                     parent.requestDisallowInterceptTouchEvent(true)
                 }
             }
-            in 250..500 -> {//todo ？ 有点问题，怎么判断是两个手指在一起？
-
+            MotionEvent.ACTION_POINTER_DOWN -> {//双指按下，如果不是在小图拖动，
                 if (!bSmallScroll) {
                     bDoubleFinger = true;
                     parent.requestDisallowInterceptTouchEvent(true)
                 }
+            }
+            MotionEvent.ACTION_POINTER_UP -> {//双指抬起
+                bDoubleFinger = false
             }
             MotionEvent.ACTION_MOVE -> {
                 if (!bDoubleFinger && !bSmallScroll) {
@@ -346,9 +385,9 @@ class PhotoView : View {
                         var detalX = event.rawX - beginX
                         var detalY = event.rawY - beginY
                         if (abs(detalY) < abs(detalX)) {//todo 左右滑动
-                            if(maxOffsetX == 0.0f){//如果是不能左右拖动，交给viewpager拖动
+                            if (maxOffsetX == 0.0f) {//如果是不能左右拖动，交给viewpager拖动
                                 parent.requestDisallowInterceptTouchEvent(false)
-                            }else{
+                            } else {
                                 if (detalX > 0.0f) {//往右边滑动
                                     if (mCurrentOffsetX == maxOffsetX) {
                                         parent.requestDisallowInterceptTouchEvent(false)
@@ -383,7 +422,7 @@ class PhotoView : View {
 
             MotionEvent.ACTION_UP -> {
                 if (!bSmallScroll) {
-                    bDoubleFinger = false
+                    bDoubleFinger = false;
                     parent.requestDisallowInterceptTouchEvent(false)
                 }
             }
@@ -480,7 +519,7 @@ class PhotoView : View {
     private fun canvasNormal(canvas: Canvas) {
         setBackgroundColor(Color.parseColor("#000000"))
         //偏移因子，大小从0到1或者从1到0，
-        var offsetFactor: Float =  (currentScale - smallScale) / (currentMaxScale - smallScale)
+        var offsetFactor: Float = (currentScale - smallScale) / (currentMaxScale - smallScale)
         canvas.translate(mCurrentOffsetX * offsetFactor, mCurrentOffsetY * offsetFactor)
 
         canvas.scale(currentScale, currentScale, width.toFloat() / 2, height.toFloat() / 2)
@@ -528,7 +567,7 @@ class PhotoView : View {
 
 
         if (bInitAnimation) {//todo 需要首次进来动画
-            mInitOffsetX  =
+            mInitOffsetX =
                 (-width / 2 + initwidth / 2 + initOffsetX).toFloat()
             mInitOffsetY =
                 (-height / 2 + initheight / 2 + initoffsetY - getStatusBarHeight()).toFloat()
@@ -576,15 +615,15 @@ class PhotoView : View {
     private fun setMaxTranslateOffset(maxScale: Float) {
         currentMaxScale = maxScale
 
-        maxOffsetX = if(bitmap.width*maxScale-width<=0){
+        maxOffsetX = if (bitmap.width * maxScale - width <= 0) {
             0.0f
-        }else{
+        } else {
             (bitmap.width * maxScale - width) / 2
         }
 
-        maxOffsetY = if(bitmap.height*maxScale-height<=0){
+        maxOffsetY = if (bitmap.height * maxScale - height <= 0) {
             0.0f
-        }else{
+        } else {
             (bitmap.height * maxScale - height) / 2
         }
     }
@@ -612,6 +651,20 @@ class PhotoView : View {
     }
 
     /**
+     * 如果ViewPager的Fragment处于不可见状态，放大的图片需要恢复到最小
+     */
+    fun reset() {
+        bLarge = false
+        bInitAnimation = false
+        bSmallScroll = false
+        currentMaxScale = bigScale
+        mCurrentOffsetX = 0.0f
+        mCurrentOffsetY = 0.0f
+        currentScale = smallScale
+        invalidate()
+    }
+
+    /**
      * 动画结束监听
      */
     abstract inner class PhotoAnimatorListener : Animator.AnimatorListener {
@@ -636,4 +689,5 @@ class PhotoView : View {
         val resourceId: Int = resources.getIdentifier("status_bar_height", "dimen", "android")
         return resources.getDimensionPixelSize(resourceId)
     }
+
 }

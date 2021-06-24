@@ -1,4 +1,4 @@
-package com.xxkt.photoview
+package com.zasia.photoview
 
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
@@ -10,7 +10,7 @@ import androidx.fragment.app.Fragment
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.xxkt.common.GlideApp
-import com.xxkt.photoview.view.PhotoView
+import com.zasia.photoview.view.PhotoView
 import kotlinx.android.synthetic.main.fragment_photo.*
 
 // TODO: Rename parameter arguments, choose names that match
@@ -24,6 +24,9 @@ private const val ARG_PARAM2 = "param2"
  * create an instance of this fragment.
  */
 class PhotoFragment : Fragment() {
+    //是否加载过
+    private var bLoad: Boolean = false
+
     // TODO: Rename and change types of parameters
     private lateinit var param1: String
     private var param2: Int = 0
@@ -47,12 +50,12 @@ class PhotoFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         GlideApp.with(requireActivity())
             .asBitmap()
             .load(param1)
             .into(object : CustomTarget<Bitmap>() {
                 override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
+                    bLoad = true;
                     photoView = PhotoView(requireActivity())
                     photoView?.layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -70,7 +73,6 @@ class PhotoFragment : Fragment() {
                             resource
                         )
                     }
-
                     linearLayout.addView(photoView)
                 }
 
@@ -79,6 +81,20 @@ class PhotoFragment : Fragment() {
             })
     }
 
+    override fun onPause() {
+        super.onPause()
+        //处于隐藏状态后，放大的图片复原
+        if(requireActivity()!=null&&!requireActivity().isFinishing&&!requireActivity().isDestroyed){
+            photoView?.reset()
+
+        }
+    }
+
+    fun recycler() {
+        if(requireActivity()!=null&&!requireActivity().isFinishing&&!requireActivity().isDestroyed){
+            photoView?.recycler()
+        }
+    }
 
     companion object {
 

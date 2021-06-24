@@ -1,4 +1,4 @@
-package com.xxkt.myviewapplication
+package com.zasia.photoview
 
 import android.os.*
 import android.util.Log

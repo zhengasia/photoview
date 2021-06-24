@@ -1,11 +1,11 @@
-package com.xxkt.photoview.inter
+package com.zasia.photoview.inter
 
 import android.content.Context
 import android.content.Intent
 import android.view.View
 import com.google.auto.service.AutoService
-import com.xxkt.photoview.GalleryActivity
-import com.xxkt.photoview.GalleryListActivity
+import com.zasia.photoview.GalleryActivity
+import com.zasia.photoview.GalleryListActivity
 
 
 @AutoService(com.xxkt.common.IPhotoViewInterface::class)

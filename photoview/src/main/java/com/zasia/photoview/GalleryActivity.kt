@@ -1,4 +1,4 @@
-package com.xxkt.photoview
+package com.zasia.photoview
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -9,8 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.xxkt.common.GlideApp
-import com.xxkt.photoview.adapter.GalleryAdapter
-import com.xxkt.photoview.view.PhotoView
+import com.zasia.photoview.view.PhotoView
 import kotlinx.android.synthetic.main.activity_gallery.*
 import kotlinx.android.synthetic.main.activity_gallery.linearLayout
 import kotlinx.android.synthetic.main.fragment_photo.*
@@ -75,4 +74,5 @@ class GalleryActivity : AppCompatActivity() {
             recycler()
         }
     }
+
 }
