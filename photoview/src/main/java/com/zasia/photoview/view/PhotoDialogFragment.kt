@@ -55,7 +55,7 @@ class PhotoDialogFragment : DialogFragment() {
     }
 
     fun addOnListener(photoListener: PhotoListener): PhotoDialogFragment {
-        this.listener = photoListener;
+        this.listener = photoListener
         return this
     }
 

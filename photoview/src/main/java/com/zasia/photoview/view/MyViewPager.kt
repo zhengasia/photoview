@@ -7,11 +7,9 @@ import androidx.viewpager.widget.ViewPager
 
 class MyViewPager: ViewPager {
 
-    constructor(context: Context) : super(context) {
-    }
+    constructor(context: Context) : super(context)
 
-    constructor(context: Context, attrs: AttributeSet?) : super(context, attrs) {
-    }
+    constructor(context: Context, attrs: AttributeSet?) : super(context, attrs)
 
     override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
         super.onInterceptTouchEvent(ev)

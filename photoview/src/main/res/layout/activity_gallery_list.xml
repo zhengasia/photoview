@@ -1,9 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical" android:layout_width="match_parent"
     android:layout_height="match_parent">
     <com.zasia.photoview.view.MyViewPager
         android:id="@+id/viewPager"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
-</LinearLayout>
+    <LinearLayout
+        android:id="@+id/linearIndicator"
+        android:layout_width="wrap_content"
+        android:orientation="horizontal"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="80dp"
+        android:visibility="gone"
+        android:showDividers="middle"
+        android:divider="@drawable/divider_width"
+        android:layout_centerHorizontal="true"
+        android:layout_height="wrap_content">
+
+    </LinearLayout>
+</RelativeLayout>

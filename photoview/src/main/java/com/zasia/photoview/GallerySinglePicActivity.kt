@@ -16,9 +16,9 @@ import kotlinx.android.synthetic.main.fragment_photo.*
 
 /**
  * @author ASIA
- * 仿微信查看大图
+ * 仿微信查看大图，单图
  */
-class GalleryActivity : AppCompatActivity() {
+class GallerySinglePicActivity : AppCompatActivity() {
 
     private var photoView: PhotoView? = null
 
@@ -28,20 +28,20 @@ class GalleryActivity : AppCompatActivity() {
 
         if (intent.hasExtra("resId")) {
             var bitmap = BitmapFactory.decodeResource(resources, intent.getIntExtra("resId", 0))
-            photoView = PhotoView(this@GalleryActivity)
+            photoView = PhotoView(this@GallerySinglePicActivity)
             photoView?.layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
             photoView?.initData(
-                this@GalleryActivity.intent.getIntExtra("offsetX", 0),
-                this@GalleryActivity.intent.getIntExtra("offsetY", 0),
-                this@GalleryActivity.intent.getIntExtra("width", 0),
-                this@GalleryActivity.intent.getIntExtra("height", 0), bitmap
+                this@GallerySinglePicActivity.intent.getIntExtra("offsetX", 0),
+                this@GallerySinglePicActivity.intent.getIntExtra("offsetY", 0),
+                this@GallerySinglePicActivity.intent.getIntExtra("width", 0),
+                this@GallerySinglePicActivity.intent.getIntExtra("height", 0), bitmap
             )
             linearLayout.addView(photoView)
         } else if (intent.hasExtra("url")) {
-            GlideApp.with(this@GalleryActivity)
+            GlideApp.with(this@GallerySinglePicActivity)
                 .asBitmap()
                 .load(intent.getStringExtra("url"))
                 .into(object : CustomTarget<Bitmap>() {
@@ -49,16 +49,16 @@ class GalleryActivity : AppCompatActivity() {
                         resource: Bitmap,
                         transition: Transition<in Bitmap>?
                     ) {
-                        photoView = PhotoView(this@GalleryActivity)
+                        photoView = PhotoView(this@GallerySinglePicActivity)
                         photoView?.layoutParams = ViewGroup.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT
                         )
                         photoView?.initData(
-                            this@GalleryActivity.intent.getIntExtra("offsetX", 0),
-                            this@GalleryActivity.intent.getIntExtra("offsetY", 0),
-                            this@GalleryActivity.intent.getIntExtra("width", 0),
-                            this@GalleryActivity.intent.getIntExtra("height", 0), resource
+                            this@GallerySinglePicActivity.intent.getIntExtra("offsetX", 0),
+                            this@GallerySinglePicActivity.intent.getIntExtra("offsetY", 0),
+                            this@GallerySinglePicActivity.intent.getIntExtra("width", 0),
+                            this@GallerySinglePicActivity.intent.getIntExtra("height", 0), resource
                         )
                         linearLayout.addView(photoView)
                     }

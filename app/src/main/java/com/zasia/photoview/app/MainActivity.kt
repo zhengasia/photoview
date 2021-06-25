@@ -1,12 +1,10 @@
-package com.zasia.photoview
+package com.zasia.photoview.app
 
 import android.os.*
-import android.util.Log
 import android.widget.LinearLayout.VERTICAL
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.xxkt.common.GlideApp
 import com.xxkt.common.IPhotoViewInterface
 import kotlinx.android.synthetic.main.activity_main.*
@@ -45,12 +43,10 @@ class MainActivity : AppCompatActivity() {
             ,"https://p0.ssl.qhimgs1.com/sdr/400__/t01c204020e2657934e.webp"
             ,"https://p0.ssl.qhimgs1.com/sdr/400__/t015f0b380b500951e4.webp"
             ,"https://p2.ssl.qhimgs1.com/sdr/400__/t01746b90fd42831942.webp"
-        );
-
+        )
         recyclerView.layoutManager = LinearLayoutManager(this@MainActivity)
         recyclerView.addItemDecoration(DividerItemDecoration(this@MainActivity,VERTICAL))
         recyclerView.adapter = PhotoAdapter(this@MainActivity,list,iPhotoViewInterface)
-
     }
 
 }

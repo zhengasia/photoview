@@ -7,7 +7,7 @@ import com.zasia.photoview.PhotoFragment
 
 class GalleryAdapter:FragmentPagerAdapter {
 
-    public var listFragments = ArrayList<Fragment>()
+    var listFragments = ArrayList<Fragment>()
 
     constructor(supportFragmentManager: FragmentManager,  picBeans: ArrayList<String>):super(supportFragmentManager,
         BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT){
@@ -17,7 +17,7 @@ class GalleryAdapter:FragmentPagerAdapter {
         }
     }
     override fun getCount(): Int {
-        return listFragments?.size
+        return listFragments.size
     }
 
     override fun getItem(position: Int): Fragment {

@@ -1,4 +1,4 @@
-package com.zasia.photoview
+package com.zasia.photoview.app
 
 import android.content.Context
 import android.view.LayoutInflater
@@ -27,6 +27,6 @@ class PhotoAdapter(var context: Context,var listUrls:ArrayList<String>,var iPhot
         }
     }
     override fun getItemCount(): Int {
-        return listUrls?.size
+        return listUrls.size
     }
 }

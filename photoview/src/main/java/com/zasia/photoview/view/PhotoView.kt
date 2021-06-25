@@ -19,6 +19,7 @@ import android.widget.OverScroller
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.xxkt.common.utils.ImageUtil
+import com.zasia.photoview.GalleryMorePicActivity
 import com.zasia.photoview.inter.PhotoListener
 import java.io.File
 import kotlin.math.abs
@@ -119,25 +120,28 @@ class PhotoView : View {
         override fun onLongPress(e: MotionEvent?) {
             super.onLongPress(e)
 
-            PhotoDialogFragment().addOnListener(object:PhotoListener{
+            PhotoDialogFragment().addOnListener(object : PhotoListener {
                 override fun savePic() {
-                    if(mContext!=null&&!(mContext as AppCompatActivity).isDestroyed
-                        &&!(mContext as AppCompatActivity).isFinishing){
-                        ImageUtil.savePic(mContext,bitmap)
-                        Toast.makeText(mContext,"保存图片成功",Toast.LENGTH_SHORT).show()
+                    if (mContext != null && !(mContext as AppCompatActivity).isDestroyed
+                        && !(mContext as AppCompatActivity).isFinishing
+                    ) {
+                        ImageUtil.savePic(mContext, bitmap)
+                        Toast.makeText(mContext, "保存图片成功", Toast.LENGTH_SHORT).show()
                     }
                 }
 
                 override fun sharePic() {
-                    if(mContext!=null&&!(mContext as AppCompatActivity).isDestroyed
-                        &&!(mContext as AppCompatActivity).isFinishing){
-                        var absoultFilePath = ImageUtil.savePic(mContext,bitmap)
+                    if (mContext != null && !(mContext as AppCompatActivity).isDestroyed
+                        && !(mContext as AppCompatActivity).isFinishing
+                    ) {
+                        var absoultFilePath = ImageUtil.savePic(mContext, bitmap)
                         ImageUtil.shareFile(mContext, File(absoultFilePath))
                     }
                 }
 
-            }).show((mContext as AppCompatActivity).supportFragmentManager,"PhotoDialogFragment")
+            }).show((mContext as AppCompatActivity).supportFragmentManager, "PhotoDialogFragment")
         }
+
         /** 单击（退出APP）*/
         override fun onSingleTapConfirmed(e: MotionEvent?): Boolean {
             recycler()
@@ -159,7 +163,7 @@ class PhotoView : View {
                 setMaxTranslateOffset(bigScale)
                 //点击哪里，哪里放大，需要获取偏移量
                 mCurrentOffsetX = (e!!.x - width / 2) * (1 - bigScale / smallScale)
-                mCurrentOffsetY = (e!!.y - height / 2) * (1 - bigScale / smallScale)
+                mCurrentOffsetY = (e.y - height / 2) * (1 - bigScale / smallScale)
                 //矫正偏移量，不能超过可以拖动的边界
                 correctOffset()
                 getAnimator(smallScale, bigScale).start()
@@ -214,6 +218,8 @@ class PhotoView : View {
                     mCurrentOffsetX -= distanceX
                     mCurrentOffsetY -= distanceY
                     invalidate()
+
+
                 } else {  //如果没有滚动的话，当Y方向滑动（必须向下）的距离大于X方向，可以滑动（退出使用）
                     if (-distanceY > abs(distanceX)) {
                         bSmallScroll = true
@@ -233,7 +239,7 @@ class PhotoView : View {
     private fun correctOffset() {
         when {
             maxOffsetX == 0.0f -> {
-                mCurrentOffsetX = 0.0f;
+                mCurrentOffsetX = 0.0f
             }
             mCurrentOffsetX > maxOffsetX -> {
                 mCurrentOffsetX = maxOffsetX
@@ -244,7 +250,7 @@ class PhotoView : View {
         }
         when {
             maxOffsetY == 0.0f -> {
-                mCurrentOffsetY = 0.0f;
+                mCurrentOffsetY = 0.0f
             }
             mCurrentOffsetY > maxOffsetY -> {
                 mCurrentOffsetY = maxOffsetY
@@ -316,7 +322,7 @@ class PhotoView : View {
     }
 
     private fun init(context: Context) {
-        this.mContext = context;
+        this.mContext = context
         paint = Paint(Paint.ANTI_ALIAS_FLAG)
         gesture = GestureDetector(context, SimpleGestureListener())
         scaleGesture = ScaleGestureDetector(context, ScaleGestureListener())
@@ -357,11 +363,10 @@ class PhotoView : View {
     /**
      * 解决ViewPager  图片左右拖动  事件冲突
      */
-    override fun dispatchTouchEvent(event: MotionEvent?): Boolean {
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
 
-        Log.e("eventTap", "eventActionMask = ${event!!.actionMasked}")
 
-        when (event!!.actionMasked) {//如果需要双指判断，使用actionMasked
+        when (event.actionMasked) {//如果需要双指判断，使用actionMasked
             MotionEvent.ACTION_DOWN -> {
                 if (!bSmallScroll) {
 
@@ -372,7 +377,7 @@ class PhotoView : View {
             }
             MotionEvent.ACTION_POINTER_DOWN -> {//双指按下，如果不是在小图拖动，
                 if (!bSmallScroll) {
-                    bDoubleFinger = true;
+                    bDoubleFinger = true
                     parent.requestDisallowInterceptTouchEvent(true)
                 }
             }
@@ -422,7 +427,7 @@ class PhotoView : View {
 
             MotionEvent.ACTION_UP -> {
                 if (!bSmallScroll) {
-                    bDoubleFinger = false;
+                    bDoubleFinger = false
                     parent.requestDisallowInterceptTouchEvent(false)
                 }
             }
@@ -451,11 +456,15 @@ class PhotoView : View {
                 })
             }
         }
-        var result = scaleGesture.onTouchEvent(event)
-        if (!scaleGesture.isInProgress) {
-            result = gesture.onTouchEvent(event)
+
+        if (!bSmallScroll) {
+            var result = scaleGesture.onTouchEvent(event)
+            if (!scaleGesture.isInProgress) {
+                result = gesture.onTouchEvent(event)
+            }
+            return result
         }
-        return result
+        return gesture.onTouchEvent(event)
     }
 
     /**
@@ -600,7 +609,6 @@ class PhotoView : View {
         this.initheight = height
         this.bitmap = bmp
         bInitAnimation = true
-        Log.e("TAG", "offsetX=$offsetX  offsetY=$offsetY width=$width height=$height   ")
     }
 
     //初始化进来
@@ -632,22 +640,34 @@ class PhotoView : View {
      * 释放资源并销毁
      */
     fun recycler() {
-        bFinishAnimation = true
-        bSmallScroll = false
-        bFinishScale = currentScale
-        bFinishValue = background.alpha
-        getAnimator(
-            currentScale,
-            mInitScale,
-            object : PhotoAnimatorListener() {
-                override fun onAnimationEnd(animation: Animator?) {
-                    super.onAnimationEnd(animation)
-                    if (context is Activity) {
-                        (context as Activity).finish()
+        if(context is GalleryMorePicActivity){//如果是多图，关闭Activity先隐藏指示器，不然显示动画的时候效果不好
+            (context as GalleryMorePicActivity).hideIndictor()
+        }
+        if (mCurrentOffsetY * 3 / (height * 2 + bitmap.height * currentScale * 2) > 2.0f / 3) {//如果拖出屏幕了,不用复原，直接退出
+            if (context is Activity) {
+                (context as Activity).finish()
+            }
+        } else {
+            bFinishAnimation = true
+            bSmallScroll = false
+            bFinishScale = currentScale
+            bFinishValue = background.alpha
+
+            getAnimator(
+                currentScale,
+                mInitScale,
+                object : PhotoAnimatorListener() {
+                    override fun onAnimationEnd(animation: Animator?) {
+                        super.onAnimationEnd(animation)
+                        if (context is Activity) {
+                            (context as Activity).finish()
+                        }
                     }
-                }
-            }, DURATION_ANIMATION
-        ).start()
+                }, DURATION_ANIMATION
+            ).start()
+        }
+
+
     }
 
     /**

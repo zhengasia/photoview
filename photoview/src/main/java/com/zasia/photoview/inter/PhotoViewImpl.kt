@@ -4,8 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.view.View
 import com.google.auto.service.AutoService
-import com.zasia.photoview.GalleryActivity
-import com.zasia.photoview.GalleryListActivity
+import com.zasia.photoview.GallerySinglePicActivity
+import com.zasia.photoview.GalleryMorePicActivity
 
 
 @AutoService(com.xxkt.common.IPhotoViewInterface::class)
@@ -17,19 +17,19 @@ open class PhotoViewImpl : com.xxkt.common.IPhotoViewInterface {
         url: String?,
         urls: ArrayList<String>?
     ) {
-        var intent = Intent(context, GalleryActivity::class.java)
+        var intent = Intent(context, GallerySinglePicActivity::class.java)
         when {
             !urls.isNullOrEmpty() -> {
-                intent = Intent(context, GalleryListActivity::class.java)
+                intent = Intent(context, GalleryMorePicActivity::class.java)
                 intent.putStringArrayListExtra("urls", urls)
                 intent.putExtra("index", resId)
             }
             resId != 0 -> {
-                intent = Intent(context, GalleryActivity::class.java)
+                intent = Intent(context, GallerySinglePicActivity::class.java)
                 intent.putExtra("resId", resId)
             }
             url != null -> {
-                intent = Intent(context, GalleryActivity::class.java)
+                intent = Intent(context, GallerySinglePicActivity::class.java)
                 intent.putExtra("url", url)
             }
         }

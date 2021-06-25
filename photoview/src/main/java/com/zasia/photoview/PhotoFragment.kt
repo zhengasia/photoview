@@ -36,7 +36,7 @@ class PhotoFragment : Fragment() {
         super.onCreate(savedInstanceState)
         arguments?.let {
             param1 = it.getString(ARG_PARAM1)!!
-            param2 = it.getInt(ARG_PARAM2)!!
+            param2 = it.getInt(ARG_PARAM2)
         }
     }
 
@@ -55,13 +55,13 @@ class PhotoFragment : Fragment() {
             .load(param1)
             .into(object : CustomTarget<Bitmap>() {
                 override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
-                    bLoad = true;
+                    bLoad = true
                     photoView = PhotoView(requireActivity())
                     photoView?.layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
-                    if (param2 == (requireActivity() as GalleryListActivity).index) {
+                    if (param2 == (requireActivity() as GalleryMorePicActivity).index) {
                         photoView?.initData(
                             requireActivity().intent.getIntExtra("offsetX", 0),
                             requireActivity().intent.getIntExtra("offsetY", 0),

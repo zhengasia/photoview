@@ -9,11 +9,11 @@
 
     <application>
         <activity
-            android:name=".GalleryActivity"
+            android:name=".GallerySinglePicActivity"
             android:process=":photoview"
             android:theme="@style/GalleryTheme" />
         <activity
-            android:name=".GalleryListActivity"
+            android:name=".GalleryMorePicActivity"
             android:process=":photoview"
             android:theme="@style/GalleryTheme" />
 
