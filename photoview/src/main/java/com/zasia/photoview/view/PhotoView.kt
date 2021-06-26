@@ -218,8 +218,6 @@ class PhotoView : View {
                     mCurrentOffsetX -= distanceX
                     mCurrentOffsetY -= distanceY
                     invalidate()
-
-
                 } else {  //如果没有滚动的话，当Y方向滑动（必须向下）的距离大于X方向，可以滑动（退出使用）
                     if (-distanceY > abs(distanceX)) {
                         bSmallScroll = true
@@ -345,20 +343,6 @@ class PhotoView : View {
         return objectAnimator
     }
 
-    fun setScaleValue(scale: Float) {
-        currentScale = scale
-        invalidate()
-    }
-
-    fun setTranslateX(tranX: Float) {
-        mCurrentOffsetX = tranX
-        invalidate()
-    }
-
-    fun setTranslateY(tranX: Float) {
-        mCurrentOffsetY = tranX
-        invalidate()
-    }
 
     /**
      * 解决ViewPager  图片左右拖动  事件冲突
@@ -494,10 +478,27 @@ class PhotoView : View {
         }
     }
 
+    fun setScaleValue(scale: Float) {
+        currentScale = scale
+        invalidate()
+    }
+
+    fun setTranslateX(tranX: Float) {
+        mCurrentOffsetX = tranX
+        invalidate()
+    }
+
+    fun setTranslateY(tranY: Float) {
+        mCurrentOffsetY = tranY
+        invalidate()
+    }
+
     /**
      * 页面退出时绘制，需要返回初始点
      */
     private fun canvasFinish(canvas: Canvas) {
+
+
         setBackgroundColor(Color.parseColor("#000000"))
         var offsetFactor: Float =
             1 - (bFinishScale - currentScale) / (bFinishScale - mInitScale)
@@ -506,6 +507,8 @@ class PhotoView : View {
             mInitOffsetY + (mCurrentOffsetY - mInitOffsetY) * offsetFactor
         )
         background.alpha = (bFinishValue * offsetFactor).toInt()
+        Log.e("Reycler", "进行中  当前缩放比例  $currentScale ")
+
         canvas.scale(currentScale, currentScale, width.toFloat() / 2, height.toFloat() / 2)
         canvas.drawBitmap(bitmap, originX, originY, paint)
     }
@@ -540,23 +543,30 @@ class PhotoView : View {
      */
     private fun canvasSmallScroll(canvas: Canvas) {
         canvas.translate(mCurrentOffsetX, mCurrentOffsetY)
-        var scale: Float = currentScale
         setBackgroundColor(Color.parseColor("#000000"))
-        scale = if (mCurrentOffsetY < 0) {
+        currentScale = getScaleByTranslateY(mCurrentOffsetY)
+        canvas.scale(currentScale, currentScale, width.toFloat() / 2, height.toFloat() / 2)
+        canvas.drawBitmap(bitmap, originX, originY, paint)
+    }
+
+    /**
+     * 根据偏移量，获得缩放值
+     */
+
+    fun getScaleByTranslateY(currentY: Float): Float =
+        if (currentY < 0) {
             background.alpha = 255
-            currentScale
+            smallScale
         } else {
             var value =
-                (255 * (1 - mCurrentOffsetY * 2 / (height + bitmap.height * currentScale))).toInt()
+                (255 * (1 - mCurrentOffsetY * 2 / (height + bitmap.height * smallScale))).toInt()
             if (value < 0) {
                 value = 0
             }
             background.alpha = value
-            currentScale * (1 - mCurrentOffsetY * 3 / (height * 2 + bitmap.height * currentScale * 2))
+            smallScale * (1 - mCurrentOffsetY * 3 / (height * 2 + bitmap.height * smallScale * 2))
         }
-        canvas.scale(scale, scale, width.toFloat() / 2, height.toFloat() / 2)
-        canvas.drawBitmap(bitmap, originX, originY, paint)
-    }
+
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -640,7 +650,7 @@ class PhotoView : View {
      * 释放资源并销毁
      */
     fun recycler() {
-        if(context is GalleryMorePicActivity){//如果是多图，关闭Activity先隐藏指示器，不然显示动画的时候效果不好
+        if (context is GalleryMorePicActivity) {//如果是多图，关闭Activity先隐藏指示器，不然显示动画的时候效果不好
             (context as GalleryMorePicActivity).hideIndictor()
         }
         if (mCurrentOffsetY * 3 / (height * 2 + bitmap.height * currentScale * 2) > 2.0f / 3) {//如果拖出屏幕了,不用复原，直接退出
@@ -652,7 +662,7 @@ class PhotoView : View {
             bSmallScroll = false
             bFinishScale = currentScale
             bFinishValue = background.alpha
-
+            Log.e("Reycler", "开始进行  当前缩放比例  $currentScale     应该缩放到   $mInitScale")
             getAnimator(
                 currentScale,
                 mInitScale,
@@ -678,6 +688,7 @@ class PhotoView : View {
         bInitAnimation = false
         bSmallScroll = false
         currentMaxScale = bigScale
+        bFinishScale = smallScale
         mCurrentOffsetX = 0.0f
         mCurrentOffsetY = 0.0f
         currentScale = smallScale
